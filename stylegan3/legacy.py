@@ -14,6 +14,12 @@ import re
 import copy
 import numpy as np
 import torch
+import sys
+
+
+sys.path.append('/home/coby/Repositories/facearithmetic/stylegan3')
+
+
 import dnnlib
 from torch_utils import misc
 
