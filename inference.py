@@ -54,8 +54,6 @@ def output_to_img(output):
   img = img[0].permute(1, 2, 0).cpu().numpy()
   return img
 
-
-
 def interpolate(z1, z2, num_steps):
   steps = []
   for i in range(num_steps):

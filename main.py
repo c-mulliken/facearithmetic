@@ -18,24 +18,33 @@ def refresh_images():
     return imgs.astype(np.uint8), latent_codes
 
 def get_addition_panel():
-    return [
+    return [sg.Frame("ADD_FRAME",
         [sg.Text("Latent Code Addition", font=("Helvetica", 14))],
-        [sg.Button("Image 1", key="ADD_1", size=(10, 1), disabled=False),
+        [sg.Button("Image 1", key="SPOT_1", size=(10, 1), disabled=False),
          sg.Text("+"),
-         sg.Button("Image 2", key="ADD_2", size=(10, 1), disabled=False),
+         sg.Button("Image 2", key="SPOT_2", size=(10, 1), disabled=False),
          sg.Text("="),
          sg.Button("Result", key="ADD_RESULT", size=(10, 1), disabled=True)],
         [sg.Button("Calculate Sum", key="CALCULATE_SUM"),
-         sg.Button("Refresh Workbench", key="REFRESH_WORK")],
+         sg.Button("Refresh Workbench", key="REFRESH_WORK")])
     ]
 
+def get_average_panel():
+    return [sg.Frame("AVG_FRAME",
+        [sg.Text("Latent Code Addition", font=("Helvetica", 14))],
+        [sg.Button("Image 1", key="SPOT_1", size=(10, 1), disabled=False),
+         sg.Text("+"),
+         sg.Button("Image 2", key="SPOT_2", size=(10, 1), disabled=False),
+         sg.Text("="),
+         sg.Button("Result", key="ADD_RESULT", size=(10, 1), disabled=True)],
+        [sg.Button("Calculate Average", key="CALCULATE_SUM"),
+         sg.Button("Refresh Workbench", key="REFRESH_WORK")])
+    ]
 
 image_array, latent_codes = refresh_images()
 
-
-# Function to convert NumPy array to PNG image data
 def numpy_to_png(image_np):
-    image = Image.fromarray(image_np.transpose(1, 2, 0))  # Convert from (3, H, W) to (H, W, 3)
+    image = Image.fromarray(image_np.transpose(1, 2, 0)) 
     image = image.resize((128, 128))
     with io.BytesIO() as output:
         image.save(output, format="PNG")
@@ -55,9 +64,13 @@ image_grid = [
     ]
     for row in range(5)
 ]
-right_panel_layout = [[sg.Text("Select an operation from above",
+right_panel_layout = [[sg.Text("Select an operation",
                                key="RIGHT_PANEL_PLACEHOLDER", font=("Helvetica", 12))],
-                               [sg.Button("Add", key="ADD_MODE", size=(10, 1))]]
+                               [sg.Button("Add", key="ADD_MODE", size=(10, 1)),
+                                sg.Button("Subtract", key="SUB_MODE", size=(10, 1)),
+                                sg.Button("Add / Subtract", key="ADDSUB_MODE", size=(10, 1)),
+                                sg.Button("Average", key="AVG_MODE", size=(10, 1))
+                               ]]
 right_panel = sg.Column(right_panel_layout, key="RIGHT_PANEL",
                         vertical_alignment='top', element_justification='center')
 
@@ -70,8 +83,8 @@ layout = [
 print(latent_codes[0, 0].shape)
 
 # event handling variables
-add_code_1 = None
-add_code_2 = None
+code_1 = None
+code_2 = None
 result_code = None
 blank_1_clicked = False
 blank_2_clicked = False
@@ -79,10 +92,14 @@ image_1_data = None
 image_2_data = None
 result_image_data = None
 
-# Create the window
-window = sg.Window("5x5 Image Grid from NumPy", layout, finalize=True)
+# state variables
+mode = None
+mode_panels = {
+    "ADD" : 
+}
 
-# Event loop
+window = sg.Window("facearithmetic", layout, finalize=True)
+
 while True:
     event, values = window.read()
 
@@ -90,11 +107,11 @@ while True:
     if event == sg.WINDOW_CLOSED:
         break
     
-    if event == "ADD_1":
+    if event == "SPOT_1":
         blank_1_clicked = True
         blank_2_clicked = False
 
-    if event == "ADD_2":
+    if event == "SPOT_2":
         blank_2_clicked = True
         blank_1_clicked = False
 
@@ -102,16 +119,19 @@ while True:
         blank_1_clicked = False
         blank_2_clicked = False
         result_code = add_code_1 + add_code_2 
-        # result_image = model.gen_img(result_code.reshape(1, 512), 0.7)
-        # result_image = result_image.transpose(2, 0, 1).astype(np.uint8)
-        # print(result_image.shape)
-        # result_image = numpy_to_png(result_image)
         result_image = model.gen_pil(result_code.reshape(1, 512), 0.7)
         window["ADD_RESULT"].update(image_data=result_image, disabled=False)
+    
+    if event == "CALCULATE_SUM":
+        blank_1_clicked = False
+        blank_2_clicked = False
+        result_code = (code_1 + code_2) / 2
+        result_image = model.gen_pil(result_code.reshape(1, 512), 0.7)
+        window["AVG_RESULT"].update(image_data=result_image, disabled=False)
 
     if event == "REFRESH_WORK":
-        add_code_1 = None
-        add_code_2 = None
+        code_1 = None
+        code_2 = None
         result_code = None
         blank_1_clicked = False
         blank_2_clicked = False
@@ -150,7 +170,15 @@ while True:
 
         window['STATUS'].update('')
 
-    if event == 'ADD_MODE':
+    if event == 'ADD_MODE' and mode != "ADD":
+        mode = "ADD"
+        window["RIGHT_PANEL"].update(visible=False)
+        right_panel_layout = get_addition_panel()
+        window.extend_layout(window["RIGHT_PANEL"], right_panel_layout)
+        window["RIGHT_PANEL"].update(visible=True)
+
+    if event == 'AVG_MODE' and mode != "AVG":
+        mode = "AVG"
         window["RIGHT_PANEL"].update(visible=False)
         right_panel_layout = get_addition_panel()
         window.extend_layout(window["RIGHT_PANEL"], right_panel_layout)
